@@ -1,0 +1,63 @@
+/*
+ * ChaosLab landing page — scoped styles (SPEC.md §8).
+ * CSS Module: class names are locally scoped, so nothing here can collide
+ * with the lab/canvas styles other agents are building. Keyframes here are
+ * for lightweight CSS-only motion (fallback glow, card lift) — the 3D
+ * rotation itself lives in HeroScene.tsx and is frozen there directly.
+ */
+
+@keyframes fallbackGlow {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.06);
+  }
+}
+
+.fallbackGlow {
+  animation: fallbackGlow 6s ease-in-out infinite;
+}
+
+.card {
+  transition:
+    transform 200ms ease,
+    border-color 200ms ease,
+    background-color 200ms ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+}
+
+.ctaButton {
+  box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+  transition:
+    box-shadow 300ms ease,
+    transform 200ms ease;
+}
+
+/* --cta-glow-shadow is a full box-shadow value, themed in globals.css: an
+ * omnidirectional accent glow in dark mode, a soft offset drop shadow in
+ * light mode (SPEC: "soft drop shadows instead of glow"). */
+.ctaButton:hover,
+.ctaButton:focus-visible {
+  box-shadow: var(--cta-glow-shadow);
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fallbackGlow {
+    animation: none;
+  }
+
+  .card,
+  .card:hover,
+  .ctaButton:hover,
+  .ctaButton:focus-visible {
+    transform: none;
+  }
+}

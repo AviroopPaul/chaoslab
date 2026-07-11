@@ -1,26 +1,172 @@
 @import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * ChaosLab theming (SPEC.md §7 + light-theme task). Every color in the app
+ * flows from the custom properties below — components read them via
+ * `var(--x)` directly, or, for glows/tints that need an alpha channel, via
+ * `color-mix(in srgb, var(--x) N%, transparent)` (see `alphaVar()` in
+ * `components/lab/format.ts`, and inline in the .css files that need it).
+ *
+ * A prior theming pass used a "var() + hex suffix" trick instead
+ * (`` `${'var(--accent)'}66` ``), on the theory that CSS custom-property
+ * substitution is a raw token splice rather than a function call, so
+ * appending hex digits after it would concatenate into `#22d3ee66`. It
+ * doesn't — the splice happens, but the result is a syntactically invalid
+ * color value that the browser silently drops (falling back to the
+ * property's initial value), which is why edge strokes and several
+ * glow/chip tints went invisible. `color-mix()` doesn't have this problem
+ * and, unlike the old trick, also works when a token is an `rgba()` value
+ * rather than a bare hex literal (several already are, below).
+ *
+ * Dark is the default look (near-black canvas, one electric cyan accent,
+ * amber/red reserved for stress states, glassy blurred panels). Light is a
+ * premium "engineering lab, lights on" palette — not stark white — with
+ * every accent/health hue darkened just enough to keep contrast on a light
+ * surface. `<html data-theme="dark|light">` (set pre-paint by the inline
+ * script in layout.tsx) selects which block applies; bare `:root` mirrors
+ * the dark block so anything rendered before the attribute lands (or with
+ * JS disabled) still gets the intended default theme.
+ */
+:root,
+:root[data-theme='dark'] {
+  --background: #0a0e14;
+  --foreground: #e6edf3;
+
+  /* surfaces */
+  --panel-bg: rgba(17, 22, 31, 0.72);
+  --panel-border: rgba(255, 255, 255, 0.1);
+  --panel-blur: 14px;
+  --canvas-dot: rgba(255, 255, 255, 0.08);
+
+  /* accent + status palette */
+  --accent: #22d3ee;
+  --accent-strong: #67e8f9;
+  --muted: #7d8590;
+
+  --health-idle: #4b5563;
+  --health-ok: #34d399;
+  --health-warn: #fbbf24;
+  --health-hot: #fb923c;
+  --health-overloaded: #f87171;
+  --health-down: #ef4444;
+
+  /* neutral surface tints derived from --foreground/--background (alpha-suffix
+   * trick above) — chips, hover states, scrollbars, slider tracks, the
+   * replica-stack shadow cards behind scaled-out server nodes, etc. */
+  --hover-tint: rgba(255, 255, 255, 0.08);
+  --range-track-bg: rgba(255, 255, 255, 0.12);
+  --thumb-ring: rgba(10, 14, 20, 0.9);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.16);
+  --chip-bg: rgba(255, 255, 255, 0.06);
+  --chip-bg-strong: rgba(255, 255, 255, 0.14);
+  --minimap-mask: rgba(10, 14, 20, 0.72);
+
+  --card-shadow-1-bg: rgba(17, 22, 31, 0.85);
+  --card-shadow-1-border: rgba(255, 255, 255, 0.16);
+  --card-shadow-2-bg: rgba(17, 22, 31, 0.65);
+  --card-shadow-2-border: rgba(255, 255, 255, 0.11);
+  --card-shadow-3-bg: rgba(17, 22, 31, 0.45);
+  --card-shadow-3-border: rgba(255, 255, 255, 0.07);
+
+  /* Near-opaque glass used by the floating preset-explanation card, which
+   * needs to stay readable over busy canvas content behind it. */
+  --explanation-bg: rgba(17, 22, 31, 0.94);
+  --explanation-border: rgba(255, 255, 255, 0.16);
+
+  /* Dark mode: bright omnidirectional glow. Light mode swaps these for a
+   * soft, offset drop shadow (SPEC: "soft drop shadows instead of glow"). */
+  --cta-glow-shadow: 0 0 32px 4px rgba(34, 211, 238, 0.45);
+  --node-select-shadow: 0 0 0 1px var(--accent-strong), 0 0 18px color-mix(in srgb, var(--accent-strong) 35%, transparent);
+}
+
+:root[data-theme='light'] {
+  --background: #f4f6f8;
+  --foreground: #17202b;
+
+  /* surfaces */
+  --panel-bg: rgba(255, 255, 255, 0.85);
+  --panel-border: rgba(23, 32, 43, 0.12);
+  --panel-blur: 14px;
+  /* Slightly darker than the dark theme's dot alpha reads on a light bg —
+   * still a faint "graph paper" texture, not a heavy grid. */
+  --canvas-dot: rgba(23, 32, 43, 0.14);
+
+  /* accent + status palette — same hues, darkened for AA contrast on light. */
+  --accent: #0891b2;
+  --accent-strong: #0e7490;
+  --muted: #5b6875;
+
+  --health-idle: #6b7280;
+  --health-ok: #059669;
+  --health-warn: #d97706;
+  --health-hot: #ea580c;
+  --health-overloaded: #dc2626;
+  --health-down: #b91c1c;
+
+  --hover-tint: rgba(23, 32, 43, 0.06);
+  --range-track-bg: rgba(23, 32, 43, 0.14);
+  --thumb-ring: rgba(244, 246, 248, 0.95);
+  --scrollbar-thumb: rgba(23, 32, 43, 0.22);
+  --chip-bg: rgba(23, 32, 43, 0.06);
+  --chip-bg-strong: rgba(23, 32, 43, 0.1);
+  --minimap-mask: rgba(23, 32, 43, 0.16);
+
+  --card-shadow-1-bg: rgba(255, 255, 255, 0.85);
+  --card-shadow-1-border: rgba(23, 32, 43, 0.14);
+  --card-shadow-2-bg: rgba(255, 255, 255, 0.65);
+  --card-shadow-2-border: rgba(23, 32, 43, 0.1);
+  --card-shadow-3-bg: rgba(255, 255, 255, 0.45);
+  --card-shadow-3-border: rgba(23, 32, 43, 0.07);
+
+  --explanation-bg: rgba(255, 255, 255, 0.94);
+  --explanation-border: rgba(23, 32, 43, 0.14);
+
+  --cta-glow-shadow: 0 10px 24px -6px rgba(23, 32, 43, 0.35);
+  --node-select-shadow: 0 0 0 1px var(--accent-strong), 0 6px 16px -4px rgba(23, 32, 43, 0.3);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-muted: var(--muted);
+  --color-panel-bg: var(--panel-bg);
+  --color-panel-border: var(--panel-border);
+  --color-health-idle: var(--health-idle);
+  --color-health-ok: var(--health-ok);
+  --color-health-warn: var(--health-warn);
+  --color-health-hot: var(--health-hot);
+  --color-health-overloaded: var(--health-overloaded);
+  --color-health-down: var(--health-down);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(circle at 1px 1px, var(--canvas-dot) 1px, transparent 0) 0 0 / 24px 24px,
+    var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  transition:
+    background-color 200ms ease,
+    color 200ms ease;
+}
+
+/* Reusable glass-panel utility for toolbars / inspector / palette. */
+.glass-panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  backdrop-filter: blur(var(--panel-blur));
+  -webkit-backdrop-filter: blur(var(--panel-blur));
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease;
 }

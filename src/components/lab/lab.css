@@ -1,0 +1,376 @@
+/*
+ * ChaosLab lab UI — component-scoped styles for /lab/backend (SPEC.md §7).
+ * Imported once by PlaygroundShell.tsx. Tailwind utilities cover layout and
+ * static color; this file holds what Tailwind can't express cleanly:
+ * <input type="range"> theming, health-state pulse keyframes, and dark
+ * restyling of React Flow's MiniMap/Controls/attribution chrome.
+ */
+
+@keyframes chaos-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px var(--health-down),
+      0 0 10px color-mix(in srgb, var(--health-down) 35%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px var(--health-down),
+      0 0 22px color-mix(in srgb, var(--health-down) 75%, transparent);
+  }
+}
+
+.chaos-node-pulse {
+  animation: chaos-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes chaos-pulse-chip {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.chaos-verdict-pulse {
+  animation: chaos-pulse-chip 1.2s ease-in-out infinite;
+}
+
+@keyframes chaos-edge-pulse {
+  0%,
+  100% {
+    stroke-opacity: 1;
+  }
+  50% {
+    stroke-opacity: 0.4;
+  }
+}
+
+.edge-pulse-down path {
+  animation: chaos-edge-pulse 1.2s ease-in-out infinite;
+}
+
+/* --- Custom range input theming (user load slider + inspector sliders) --- */
+.chaos-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--range-track-bg);
+  outline: none;
+}
+
+.chaos-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--thumb-ring);
+  box-shadow:
+    0 0 0 1px var(--accent),
+    0 0 8px color-mix(in srgb, var(--accent) 60%, transparent);
+  cursor: pointer;
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.chaos-range::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.chaos-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--thumb-ring);
+  box-shadow:
+    0 0 0 1px var(--accent),
+    0 0 8px color-mix(in srgb, var(--accent) 60%, transparent);
+  cursor: pointer;
+  transition: transform 150ms ease;
+}
+
+.chaos-range::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--range-track-bg);
+}
+
+/* --- Dark restyle of React Flow chrome (MiniMap / Controls / attribution) --- */
+.chaos-minimap {
+  background: var(--panel-bg) !important;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  overflow: hidden;
+  backdrop-filter: blur(var(--panel-blur));
+}
+
+.chaos-controls {
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: none !important;
+  border: 1px solid var(--panel-border);
+}
+
+.chaos-controls button {
+  background: var(--panel-bg) !important;
+  border-bottom: 1px solid var(--panel-border) !important;
+  color: var(--foreground) !important;
+  transition: background 150ms ease;
+}
+
+.chaos-controls button:hover {
+  background: var(--hover-tint) !important;
+}
+
+.chaos-controls button svg {
+  fill: var(--foreground);
+}
+
+.react-flow__attribution {
+  display: none;
+}
+
+/* Thin scrollbars for palette / inspector panels, themed to match. */
+.chaos-palette,
+.chaos-inspector {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+.chaos-palette::-webkit-scrollbar,
+.chaos-inspector::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chaos-palette::-webkit-scrollbar-thumb,
+.chaos-inspector::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+}
+
+/* Custom node handles — replace RF's tiny default dot */
+.chaos-handle {
+  width: 9px !important;
+  height: 9px !important;
+  border-radius: 50% !important;
+  background: var(--accent) !important;
+  border: 2px solid var(--thumb-ring) !important;
+  transition: transform 150ms ease;
+}
+
+.chaos-handle:hover {
+  transform: scale(1.3);
+}
+
+.chaos-select option {
+  color: var(--foreground);
+}
+
+/*
+ * --- Server replica-set visualization (Task: horizontal scale, GKE-pod
+ * style) ---
+ *
+ * Shadow cards: absolutely positioned siblings of `.chaos-node`, inside a
+ * `.chaos-node-stack` wrapper. Being `position: absolute`, they're excluded
+ * from the wrapper's (and RF's) auto-sized layout box entirely — they can
+ * visually poke out past the card's edges without ever perturbing React
+ * Flow's measured node size, handle placement, or selection outline.
+ */
+.chaos-node-stack {
+  position: relative;
+}
+
+.chaos-shadow-card {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: 0.75rem;
+  pointer-events: none;
+  /* Same family as --panel-bg's surface color in each theme — depth comes
+   * from varying alpha per layer directly (via --card-shadow-N-bg/border)
+   * rather than the `opacity` property, which would also wash out the
+   * already-faint border and become imperceptible against the canvas. */
+  background: var(--card-shadow-1-bg);
+  border: 1px solid var(--card-shadow-1-border);
+}
+
+.chaos-shadow-card-1 {
+  transform: translate(4px, 4px);
+}
+
+.chaos-shadow-card-2 {
+  transform: translate(8px, 8px);
+  background: var(--card-shadow-2-bg);
+  border-color: var(--card-shadow-2-border);
+}
+
+.chaos-shadow-card-3 {
+  transform: translate(12px, 12px);
+  background: var(--card-shadow-3-bg);
+  border-color: var(--card-shadow-3-border);
+}
+
+.chaos-shadow-card-enter {
+  animation: chaos-shadow-fade-in 240ms ease-out;
+}
+
+@keyframes chaos-shadow-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.chaos-node {
+  position: relative;
+  z-index: 1;
+}
+
+/* Pod grid: one small square per instance, tinted by health color, max
+ * 2 rows x 8 = 16 slots (15 squares + an overflow "+N" chip). */
+.chaos-pod-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 8px);
+  grid-auto-rows: 8px;
+  gap: 2px;
+}
+
+.chaos-pod {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  animation: chaos-pod-pop 180ms ease-out both;
+}
+
+.chaos-pod.chaos-pod-exiting {
+  animation: chaos-pod-shrink 180ms ease-in both;
+}
+
+@keyframes chaos-pod-pop {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes chaos-pod-shrink {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(0);
+    opacity: 0;
+  }
+}
+
+/* Occupies the last grid cell but is allowed to grow past its 8px track
+ * (grid tracks are fixed-size here, so this never widens the grid itself —
+ * it just visually spills into the card's existing right-hand padding,
+ * which is the only way "+435" reads at this scale). */
+.chaos-pod-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  min-width: 8px;
+  height: 8px;
+  padding: 0 3px;
+  border-radius: 2px;
+  background: var(--chip-bg-strong);
+  color: var(--foreground);
+  font-size: 8px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* --- Edge hover-delete affordance (rendered via EdgeLabelRenderer at the
+   bezier midpoint — QA defect 2) --- */
+.chaos-edge-delete {
+  position: absolute;
+  pointer-events: all;
+}
+
+.chaos-edge-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  color: var(--foreground);
+  backdrop-filter: blur(var(--panel-blur));
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    color 150ms ease,
+    transform 150ms ease;
+}
+
+.chaos-edge-delete-btn:hover {
+  background: var(--health-overloaded);
+  border-color: var(--health-overloaded);
+  color: #fff;
+  transform: scale(1.12);
+}
+
+/* --- Node/edge right-click context menu (QA defect 3) --- */
+.chaos-context-menu {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px;
+  border-radius: 10px;
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.35);
+  outline: none;
+}
+
+.chaos-context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 9px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.chaos-context-menu-item:hover:not(:disabled) {
+  background: var(--hover-tint);
+}
+
+.chaos-context-menu-item:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.chaos-context-menu-item-danger {
+  color: var(--health-overloaded);
+}
+
+.chaos-context-menu-item-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--health-overloaded) 12%, transparent);
+}
