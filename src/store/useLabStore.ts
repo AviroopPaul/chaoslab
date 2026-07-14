@@ -23,6 +23,7 @@ import type {
   SimNode,
   SimResult,
 } from '../lib/sim/types';
+import { QUESTIONS } from '../lib/practice/questions';
 
 /** RF node type string rendered by the single generic `ComponentNode`. */
 export const COMPONENT_NODE_TYPE = 'component';
@@ -33,7 +34,14 @@ export type LabNodeData = { simNode: SimNode };
 export type LabNode = Node<LabNodeData>;
 export type LabEdge = Edge;
 
+/** Sandbox mode's single autosave slot. */
 const STORAGE_KEY = 'chaoslab.backend.v1';
+/** Practice mode (SPEC-PRACTICE.md §8): one autosave slot per question id, so
+ * switching questions (or bouncing back to the sandbox) never clobbers a
+ * different attempt. */
+function practiceStorageKey(questionId: string): string {
+  return `chaoslab.practice.graph.${questionId}`;
+}
 const SOLVE_DEBOUNCE_MS = 60;
 const SAVE_DEBOUNCE_MS = 500;
 
@@ -176,11 +184,48 @@ export interface LabState {
   // persistence
   hydrate: () => void;
 
+  // practice mode (SPEC-PRACTICE.md §8, additive) — reuses this same store
+  // (and every canvas component) rather than forking a parallel one.
+  // `mode`/`activeQuestionId` decide which localStorage slot autosave targets.
+  mode: 'sandbox' | 'practice';
+  activeQuestionId: string | null;
+  /** Load (or start fresh for) a question's attempt; switches autosave to its own key. */
+  enterPractice: (questionId: string) => void;
+  /** Return to sandbox mode, restoring the sandbox's own autosaved graph. */
+  exitPractice: () => void;
+
   // internal: force an immediate re-solve (exposed for tests / debug)
   resolveNow: () => void;
 }
 
-function persist(nodes: LabNode[], edges: LabEdge[], global: GlobalConfig) {
+function toLabGraph(parsed: PersistedGraph): { nodes: LabNode[]; edges: LabEdge[]; global: GlobalConfig } {
+  const nodes: LabNode[] = parsed.nodes.map((n) => ({
+    id: n.id,
+    type: COMPONENT_NODE_TYPE,
+    position: n.position,
+    data: { simNode: { id: n.id, kind: n.kind, label: n.label, config: n.config } },
+  }));
+  const edges: LabEdge[] = parsed.edges.map((e) => ({
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    type: FLOW_EDGE_TYPE,
+  }));
+  return { nodes, edges, global: parsed.global };
+}
+
+function readPersisted(storageKey: string): PersistedGraph | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(storageKey);
+    if (!raw) return null;
+    return JSON.parse(raw) as PersistedGraph;
+  } catch {
+    return null;
+  }
+}
+
+function persist(nodes: LabNode[], edges: LabEdge[], global: GlobalConfig, storageKey: string) {
   if (typeof window === 'undefined') return;
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
@@ -197,7 +242,7 @@ function persist(nodes: LabNode[], edges: LabEdge[], global: GlobalConfig) {
       global,
     };
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      window.localStorage.setItem(storageKey, JSON.stringify(payload));
     } catch {
       // localStorage can throw (quota, private mode) — autosave is best-effort.
     }
@@ -225,8 +270,27 @@ export const useLabStore = create<LabState>((set, get) => {
 
   function afterMutation(immediate: boolean) {
     recompute(immediate);
-    const { nodes, edges, global } = get();
-    persist(nodes, edges, global);
+    const { nodes, edges, global, mode, activeQuestionId } = get();
+    const storageKey = mode === 'practice' && activeQuestionId ? practiceStorageKey(activeQuestionId) : STORAGE_KEY;
+    persist(nodes, edges, global, storageKey);
+  }
+
+  /** Shared by hydrate() and exitPractice() — load the sandbox's own
+   * autosaved graph, falling back to the Hello World preset if there is
+   * none (or it fails to parse). */
+  function loadSandboxGraph() {
+    const parsed = readPersisted(STORAGE_KEY);
+    if (!parsed) {
+      get().loadPreset('hello-world');
+      return;
+    }
+    try {
+      const { nodes, edges, global } = toLabGraph(parsed);
+      set((state) => ({ nodes, edges, global, selectedNodeId: null, fitViewNonce: state.fitViewNonce + 1 }));
+      recompute(true);
+    } catch {
+      get().loadPreset('hello-world');
+    }
   }
 
   return {
@@ -239,6 +303,8 @@ export const useLabStore = create<LabState>((set, get) => {
     fitViewNonce: 0,
     explanationPresetId: null,
     explanationOpen: false,
+    mode: 'sandbox',
+    activeQuestionId: null,
 
     openExplanation: () => set({ explanationOpen: true }),
     closeExplanation: () => set({ explanationOpen: false }),
@@ -427,32 +493,36 @@ export const useLabStore = create<LabState>((set, get) => {
 
     hydrate: () => {
       if (get().hydrated) return;
-      set({ hydrated: true });
-      if (typeof window === 'undefined') return;
-      try {
-        const raw = window.localStorage.getItem(STORAGE_KEY);
-        if (!raw) {
-          get().loadPreset('hello-world');
-          return;
-        }
-        const parsed = JSON.parse(raw) as PersistedGraph;
-        const nodes: LabNode[] = parsed.nodes.map((n) => ({
-          id: n.id,
-          type: COMPONENT_NODE_TYPE,
-          position: n.position,
-          data: { simNode: { id: n.id, kind: n.kind, label: n.label, config: n.config } },
-        }));
-        const edges: LabEdge[] = parsed.edges.map((e) => ({
-          id: e.id,
-          source: e.source,
-          target: e.target,
-          type: FLOW_EDGE_TYPE,
-        }));
-        set((state) => ({ nodes, edges, global: parsed.global, fitViewNonce: state.fitViewNonce + 1 }));
+      // Always the sandbox entrypoint (/lab/backend) — reassert sandbox mode
+      // in case a previous practice session (in this same tab) left `mode`
+      // pointed at a question.
+      set({ hydrated: true, mode: 'sandbox', activeQuestionId: null });
+      loadSandboxGraph();
+    },
+
+    enterPractice: (questionId) => {
+      set({ mode: 'practice', activeQuestionId: questionId, selectedNodeId: null });
+      const saved = readPersisted(practiceStorageKey(questionId));
+      if (saved) {
+        const { nodes, edges, global } = toLabGraph(saved);
+        set((state) => ({ nodes, edges, global, fitViewNonce: state.fitViewNonce + 1 }));
         recompute(true);
-      } catch {
-        get().loadPreset('hello-world');
+        return;
       }
+      // No saved attempt yet (SPEC-PRACTICE.md §8): start with ONLY a Users
+      // node, defaulted to the question's target load so the canvas opens at
+      // the scale it'll actually be graded at.
+      const question = QUESTIONS.find((q) => q.id === questionId);
+      const global = question?.targetLoad ?? DEFAULT_GLOBAL;
+      const usersNode = makeLabNode('users', { x: 240, y: 220 });
+      usersNode.data.simNode.config = { ...usersNode.data.simNode.config, users: global.users };
+      set((state) => ({ nodes: [usersNode], edges: [], global, fitViewNonce: state.fitViewNonce + 1 }));
+      afterMutation(true);
+    },
+
+    exitPractice: () => {
+      set({ mode: 'sandbox', activeQuestionId: null, selectedNodeId: null });
+      loadSandboxGraph();
     },
 
     resolveNow: () => recompute(true),

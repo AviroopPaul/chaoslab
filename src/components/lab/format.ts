@@ -1,4 +1,4 @@
-import type { ComponentKind, Health } from '../../lib/sim/types';
+import type { Health } from '../../lib/sim/types';
 
 /**
  * Small formatting + lookup helpers shared across the playground UI
@@ -105,15 +105,9 @@ export function alphaVar(cssVar: string, percent: number): string {
   return `color-mix(in srgb, ${cssVar} ${percent}%, transparent)`;
 }
 
-/** Bottleneck-node-kind -> plain-English fix suggestion for the metrics bar. */
-export const BOTTLENECK_SUGGESTIONS: Record<ComponentKind, string> = {
-  users: 'Traffic source — pull back the USER LOAD slider to relieve pressure.',
-  cdn: 'Raise the CDN hit ratio, or add another edge PoP in front of it.',
-  loadbalancer: 'Scale out the load balancer tier.',
-  ratelimiter: 'Raise the limit, or shed more aggressively upstream at the edge.',
-  server: 'Add instances, or put a load balancer in front to spread the load.',
-  cache: 'Raise cache capacity or hit ratio, or add a CDN in front of it.',
-  database: 'Add a cache, read replicas, or shards.',
-  queue: 'Add workers to raise the drain rate.',
-  storage: 'Shard or replicate storage, or front it with a CDN.',
-};
+/** Bottleneck-node-kind -> plain-English fix suggestion for the metrics bar.
+ * Re-exported from `lib/sim/suggestions.ts`, which is the single source of
+ * truth shared with the practice grader's `bottleneckSummary` — this module
+ * (component-layer, no React) used to define it locally, but the practice
+ * grader lives under `lib/` and shouldn't reach into `components/`. */
+export { BOTTLENECK_SUGGESTIONS } from '../../lib/sim/suggestions';

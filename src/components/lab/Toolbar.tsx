@@ -1,35 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { useRef, useState, type ChangeEvent } from 'react';
-import { Download, Info, Minus, Plus, Trash2, Upload } from 'lucide-react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { Download, Info, Trash2, Upload } from 'lucide-react';
 
 import { PRESETS } from '../../lib/sim/presets';
 import { useLabStore } from '../../store/useLabStore';
 import ThemeToggle from '../ThemeToggle';
-import { formatCompact } from './format';
-
-const USERS_MIN = 10;
-const USERS_MAX = 500_000_000;
-const LOG_MIN = Math.log10(USERS_MIN);
-const LOG_MAX = Math.log10(USERS_MAX);
-const STOPS = [10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 500_000_000];
-// The slider's underlying range still runs all the way to 500M (USERS_MAX),
-// but labeling every stop crams "100M" and "500M" into the same few pixels
-// at the right edge and they render as mashed-together text (QA defect 4).
-// Drop the trailing label — the "+" nudge button and the live readout still
-// make it obvious the range goes past 100M.
-const LABELED_STOPS = STOPS.filter((stop) => stop <= 100_000_000);
-
-function stopLabel(n: number): string {
-  if (n >= 1_000_000) return `${n / 1_000_000}M`;
-  if (n >= 1_000) return `${n / 1_000}k`;
-  return `${n}`;
-}
+import UserLoadSlider from './UserLoadSlider';
 
 export default function Toolbar() {
-  const users = useLabStore((s) => s.global.users);
-  const setUsers = useLabStore((s) => s.setUsers);
   const loadPreset = useLabStore((s) => s.loadPreset);
   const clear = useLabStore((s) => s.clear);
   const exportJson = useLabStore((s) => s.exportJson);
@@ -41,12 +21,21 @@ export default function Toolbar() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [importError, setImportError] = useState(false);
 
-  const sliderValue = Math.log10(Math.max(users, USERS_MIN));
-
-  function nudge(factor: number) {
-    const next = Math.round(Math.min(USERS_MAX, Math.max(USERS_MIN, users * factor)));
-    setUsers(next);
-  }
+  // SPEC-PRACTICE.md §7: `/lab/backend?preset=<id>` loads that preset (with
+  // its explanation panel open, via loadPreset's own auto-open logic) so the
+  // landing page's Templates cards can deep-link straight into a scenario.
+  // Read directly off `window.location.search` (rather than the
+  // `useSearchParams` hook) since this whole subtree is only ever mounted
+  // client-side via a `next/dynamic({ ssr: false })` boundary already.
+  useEffect(() => {
+    const presetId = new URLSearchParams(window.location.search).get('preset');
+    if (presetId && PRESETS.some((p) => p.id === presetId)) {
+      loadPreset(presetId);
+    }
+    // Intentionally run once on mount only — this is a one-shot deep link,
+    // not a live binding to the URL.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleExport() {
     const json = exportJson();
@@ -146,58 +135,7 @@ export default function Toolbar() {
       </div>
 
       <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
-        <span className="hidden whitespace-nowrap text-[11px] uppercase tracking-wider text-muted sm:inline">
-          User load
-        </span>
-        <button
-          type="button"
-          onClick={() => nudge(1 / 1.5)}
-          aria-label="Decrease users"
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-muted transition-colors duration-150 hover:text-foreground"
-          style={{ borderColor: 'var(--panel-border)' }}
-        >
-          <Minus size={12} />
-        </button>
-
-        <div className="chaos-slider relative w-56 pt-1 sm:w-64">
-          <input
-            type="range"
-            min={LOG_MIN}
-            max={LOG_MAX}
-            step={0.001}
-            value={sliderValue}
-            onChange={(e) => setUsers(Math.round(10 ** Number(e.target.value)))}
-            className="chaos-range w-full"
-            aria-label="Users"
-          />
-          <div className="relative mt-1 h-3 text-[9px] text-muted">
-            {LABELED_STOPS.map((stop) => (
-              <span
-                key={stop}
-                className="absolute -translate-x-1/2 tabular-nums"
-                style={{ left: `${((Math.log10(stop) - LOG_MIN) / (LOG_MAX - LOG_MIN)) * 100}%` }}
-              >
-                {stopLabel(stop)}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => nudge(1.5)}
-          aria-label="Increase users"
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-muted transition-colors duration-150 hover:text-foreground"
-          style={{ borderColor: 'var(--panel-border)' }}
-        >
-          <Plus size={12} />
-        </button>
-
-        <span className="chaos-users-readout min-w-[7ch] text-right font-mono text-lg font-semibold tabular-nums text-accent">
-          {formatCompact(users)}
-        </span>
-        <span className="hidden text-[11px] text-muted sm:inline">users</span>
-
+        <UserLoadSlider />
         <div className="mx-1 h-8 w-px shrink-0" style={{ background: 'var(--panel-border)' }} />
         <ThemeToggle />
       </div>

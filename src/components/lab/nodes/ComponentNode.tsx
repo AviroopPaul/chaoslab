@@ -242,7 +242,19 @@ export default function ComponentNode({ id, data, selected }: NodeProps<LabNode>
           >
             <icon.Icon size={16} strokeWidth={2} />
           </span>
-          <span className="truncate text-[13px] font-medium text-foreground">{simNode.label}</span>
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="truncate text-[13px] font-medium leading-tight text-foreground">{simNode.label}</span>
+            {/* Fairness-fix #6: a custom-labeled node ("Redirect Cache") should
+             * still self-identify its underlying kind on canvas, without a
+             * hidden-knowledge trip to the inspector — only rendered when the
+             * label actually diverges from the catalog name, so the common
+             * case (label === kind name) stays exactly as compact as before. */}
+            {simNode.label !== entry.name && (
+              <span className="truncate text-[8px] font-semibold uppercase leading-tight tracking-wider text-muted">
+                {entry.name}
+              </span>
+            )}
+          </span>
           {warnings.length > 0 && (
             <span
               title={warnings.join('\n')}

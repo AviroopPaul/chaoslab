@@ -138,22 +138,65 @@
   display: none;
 }
 
-/* Thin scrollbars for palette / inspector panels, themed to match. */
-.chaos-palette,
+/* Thin scrollbars for the inspector / question panels, themed to match. */
 .chaos-inspector {
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
-.chaos-palette::-webkit-scrollbar,
 .chaos-inspector::-webkit-scrollbar {
   width: 8px;
 }
 
-.chaos-palette::-webkit-scrollbar-thumb,
 .chaos-inspector::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
   border-radius: 999px;
+}
+
+/*
+ * --- Palette top bar (product-owner layout change: replaces the old
+ * ~240px left palette rail with a horizontal scrollable chip strip, on both
+ * /lab/backend and /practice/[id] — see PaletteBar.tsx) ---
+ */
+.chaos-palette-scroller {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+.chaos-palette-scroller::-webkit-scrollbar {
+  height: 6px;
+}
+
+.chaos-palette-scroller::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+}
+
+/* Edge fade cues over the scroller, shown only while there's actually more
+ * content off-screen in that direction (toggled from real scroll geometry in
+ * PaletteBar.tsx, not a permanent mask). */
+.chaos-palette-fade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 32px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.chaos-palette-fade-left {
+  left: 0;
+  background: linear-gradient(to right, var(--panel-bg), transparent);
+}
+
+.chaos-palette-fade-right {
+  right: 0;
+  background: linear-gradient(to left, var(--panel-bg), transparent);
+}
+
+/* Question panel collapse rail (icon-only tabs + expand chevron). */
+.chaos-rail-btn:hover {
+  background: var(--hover-tint);
 }
 
 /* Custom node handles — replace RF's tiny default dot */

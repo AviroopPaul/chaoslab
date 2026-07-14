@@ -56,13 +56,16 @@ function finite(value: number, fallback = 0): number {
 // numeric capacities (only cost/latency/field metadata), so they live here.
 // ---------------------------------------------------------------------------
 
-const CDN_CAPACITY = 5_000_000;
-const LOADBALANCER_CAPACITY = 200_000;
-const CACHE_CAPACITY = 300_000;
-const QUEUE_ENQUEUE_CAPACITY = 500_000;
-const STORAGE_CAPACITY = 100_000;
-const DB_WRITE_RPS_PER_SHARD = 4_000;
-const DB_READ_RPS_PER_SHARD = 8_000;
+// Exported (in addition to being used internally below) so UI-facing code —
+// notably the practice-mode component datasheet (src/lib/practice/datasheet.ts)
+// — can read the same numbers instead of re-hardcoding them and risking drift.
+export const CDN_CAPACITY = 5_000_000;
+export const LOADBALANCER_CAPACITY = 200_000;
+export const CACHE_CAPACITY = 300_000;
+export const QUEUE_ENQUEUE_CAPACITY = 500_000;
+export const STORAGE_CAPACITY = 100_000;
+export const DB_WRITE_RPS_PER_SHARD = 4_000;
+export const DB_READ_RPS_PER_SHARD = 8_000;
 
 /** Utilization above which a node "goes down" and serves at half effective capacity. */
 const DOWN_UTIL_THRESHOLD = 1.5;
